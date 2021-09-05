@@ -51,10 +51,10 @@ const App: () => Node = () => {
       >
         {
           dataArray.map((item, i) => {
-            let opacity = new Animated.Value(0)
+            let opacity = useRef(new Animated.Value(0)).current
             let translateX = useRef(new Animated.Value(-SCREEN_WIDTH)).current
-            let height = new Animated.Value(100)
-            let padding = new Animated.Value(10)
+            let height = useRef(new Animated.Value(100)).current
+            let padding = useRef(new Animated.Value(10)).current
 
             const deleteAction = () => {
               Animated.timing(translateX, {
@@ -62,21 +62,22 @@ const App: () => Node = () => {
                 toValue: SCREEN_WIDTH,
                 duration: 200
               }).start(finished => {
+                const newArray = dataArray.map(x => x !== item ? x : item)
                 Animated.parallel([
-                  Animated.timing(height, {
+                  Animated.spring(height, {
                     useNativeDriver: false,
                     toValue: 0,
-                    duration: 200
+                    friction: 8,
+                    tension: 20
                   }),
                   Animated.timing(padding, {
                     useNativeDriver: false,
                     toValue: 0,
                     duration: 200
                   })
-                ]).start(() => {
-                  const newArray = dataArray.map(x => x !== item ? x : item)
-                  setDataArray(newArray)
-                })
+                ]).start()
+                opacity.setValue(1)
+                setDataArray(newArray)
               })
             }
 
@@ -98,7 +99,6 @@ const App: () => Node = () => {
                 onPanResponderMove: (evt, gestureState) => {
                   // Animated.timing(translateX, { toValue: gestureState.moveX, duration: 100 })
                   translateX.setValue(gestureState.dx)
-                  console.log(gestureState.moveX)
                   // The most recent move distance is gestureState.move{X,Y}
                   // The accumulated gesture distance since becoming responder is
                   // gestureState.d{x,y}
@@ -106,11 +106,12 @@ const App: () => Node = () => {
                 // onPanResponderTerminationRequest: (evt, gestureState) =>
                 //   true,
                 onPanResponderRelease: (evt, gestureState) => {
-                  if (gestureState.moveX < 200) {
+                  if (gestureState.dx < -SCREEN_WIDTH / 2) {
                     // console.log("Should delete")
                     deleteAction()
                   } else {
                     Animated.spring(translateX, {
+                      useNativeDriver: false,
                       toValue: 0,
                       friction: 5,
                       tension: 70
@@ -158,7 +159,7 @@ const App: () => Node = () => {
               key={i}
               style={{ transform: [{ translateX: translateX }], opacity: opacity, height: height, backgroundColor: 'white', justifyContent: 'center', margin: padding, borderRadius: 5, padding: padding }}>
               <TouchableOpacity
-                onPress={() => { deleteAction() }}>
+                style={{ flex: 1, justifyContent: 'center' }}>
                 <Text style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 25 }}>{`Item ${item}`}</Text>
               </TouchableOpacity>
             </Animated.View>
